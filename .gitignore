@@ -6,3 +6,7 @@ src/massive/**/__pycache__/*
 __pycache__/
 .DS_Store
 
+pretrained_models
+wandb
+outputs
+IN-MASSIVE

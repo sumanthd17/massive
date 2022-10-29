@@ -1,13 +1,14 @@
 
-run_name: &run_name xlmr_base_zero_20220411_test
+run_name: &run_name auto_base_zero_20220926_test
 max_length: &max_length 512
 
 model:
-  type: xlmr intent classification slot filling
-  checkpoint: /PATH/TO/CHECKPOINTS/xlmr_base_zero_20220411/checkpoint-3000/
+  type: ibv2 intent classification slot filling
+  model_name_or_path: ai4bharat/IndicBERT-MLM-TLM
+  checkpoint: /home/sumanth/massive/outputs/ibv2-mlm-tlm/checkpoint-5500
 
 tokenizer:
-  type: xlmr base
+  model_name_or_path: ai4bharat/IndicBERT-MLM-TLM
   tok_args:
     vocab_file: /PATH/TO/PRETRAINED/MODELS/xlm-roberta-base-sentencepiece.bpe.model
     max_len: *max_length
@@ -19,17 +20,16 @@ collator:
     padding: longest
 
 test:
-  test_dataset: /PATH/TO/TESTDATA
+  test_dataset: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.test
   test_locales_remove: en-US
-  intent_labels: /PATH/TO/INTENTMAP
-  slot_labels: /PATH/TO/SLOTMAP
+  intent_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.intents
+  slot_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.slots
   massive_path: /PATH/TO/RAW/MASSIVE/
   slot_labels_ignore:
     - Other
   eval_metrics: all
-  #predictions_file: /PATH/TO/LOGS/xlmr_base_zero_20220411/preds.jsonl
   trainer_args:
-    output_dir: /PATH/TO/CHECKPOINTS/xlmr_base_zero_20220411/
+    output_dir: /home/sumanth/massive/outputs/ibv2-mlm-tlm/checkpoint-5500
     per_device_eval_batch_size: 128
     remove_unused_columns: false
     label_names:

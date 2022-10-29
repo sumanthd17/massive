@@ -1,0 +1,43 @@
+
+run_name: &run_name auto_base_zero_20220926_test
+max_length: &max_length 512
+
+model:
+  type: mbert intent classification slot filling
+  model_name_or_path: bert-base-multilingual-cased
+  checkpoint: /home/sumanth/massive/outputs/mbert/checkpoint-5500
+
+tokenizer:
+  type: xlmr base
+  model_name_or_path: bert-base-multilingual-cased
+  tok_args:
+    vocab_file: /PATH/TO/PRETRAINED/MODELS/xlm-roberta-base-sentencepiece.bpe.model
+    max_len: *max_length
+
+collator:
+  type: massive intent class slot fill
+  args:
+    max_length: *max_length
+    padding: longest
+
+test:
+  test_dataset: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.test
+  test_locales_remove: en-US
+  intent_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.intents
+  slot_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.slots
+  massive_path: /PATH/TO/RAW/MASSIVE/
+  slot_labels_ignore:
+    - Other
+  eval_metrics: all
+  trainer_args:
+    output_dir: /home/sumanth/massive/outputs/mbert/checkpoint-5500
+    per_device_eval_batch_size: 128
+    remove_unused_columns: false
+    label_names:
+      - intent_num
+      - slots_num
+    log_level: info
+    logging_strategy: no
+    #locale_eval_strategy: all only
+    locale_eval_strategy: all and each
+    disable_tqdm: false

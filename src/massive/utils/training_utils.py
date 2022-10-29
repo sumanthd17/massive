@@ -18,6 +18,7 @@ from massive.loaders.collator_ic_sf import CollatorMASSIVEIntentClassSlotFill
 from massive.loaders.collator_t2t_ic_sf import CollatorMASSIVET2TIntentClassSlotFill
 from massive.models.xlmr_ic_sf import XLMRIntentClassSlotFill
 from massive.models.mt5_ic_sf_encoder_only import MT5IntentClassSlotFillEncoderOnly
+from massive.models.bert_ic_sf import BERTIntentClassSlotFill
 import datasets
 import json
 import logging
@@ -32,7 +33,10 @@ from transformers import (
     MT5ForConditionalGeneration,
     MT5TokenizerFast,
     XLMRobertaConfig,
-    XLMRobertaTokenizerFast
+    XLMRobertaTokenizerFast,
+    AutoTokenizer,
+    AutoConfig,
+    BertConfig
 )
 
 logger = logging.getLogger('massive_logger')
@@ -70,6 +74,18 @@ def init_model(conf, intents, slots, return_hpo_fn=False):
             model_config = XLMRobertaConfig(**config_args) if config_args else None
             model_cls = XLMRIntentClassSlotFill
             model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
+        elif conf.get('model.type') == 'mbert intent classification slot filling':
+            model_config = BertConfig(**config_args) if config_args else None
+            model_cls = BERTIntentClassSlotFill
+            model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
+        elif conf.get('model.type') == 'muril intent classification slot filling':
+            model_config = BertConfig(**config_args) if config_args else None
+            model_cls = BERTIntentClassSlotFill
+            model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
+        elif conf.get('model.type') == 'ibv2 intent classification slot filling':
+            model_config = BertConfig(**config_args) if config_args else None
+            model_cls = BERTIntentClassSlotFill
+            model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
         elif conf.get('model.type') == 'mt5 for conditional generation':
             model_config = MT5Config(**config_args) if config_args else None
             model_cls = MT5ForConditionalGeneration
@@ -78,6 +94,15 @@ def init_model(conf, intents, slots, return_hpo_fn=False):
             model_config = MT5Config(**config_args) if config_args else None
             model_cls = MT5IntentClassSlotFillEncoderOnly
             model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
+        # elif conf.get('model.type') == 'auto model intent classification slot filling':
+        #     # model_config = AutoConfig(**config_args) if config_args else None
+        #     if config_args:
+        #         model_config = AutoConfig.from_pretrained(conf.get('model.model_name_or_path'), use_auth_token=True, **config_args)
+        #     else:
+        #         model_config = AutoConfig.from_pretrained(conf.get('model.model_name_or_path'), use_auth_token=True)
+            
+        #     model_cls = AutoModelIntentClassSlotFill
+        #     model_kwargs = {'intent_label_dict': intents, 'slot_label_dict': slots}
         # add more models here as additional elif statements
         else:
             raise NotImplementedError(f"Model type {conf.get('model.type')} not found!")
@@ -101,8 +126,20 @@ def init_model(conf, intents, slots, return_hpo_fn=False):
                 # sometimes this parses as a list, sometimes as list of lists. Remove outer list.
                 rpl = rpl[0] if type(rpl[0]) == list else rpl
                 mod_weights = {k.replace(rpl[0], rpl[1]): v for k, v in mod_weights.items()}
+
+            d_ = {}
+            for k, v in mod_weights.items():
+                if 'LayerNorm.gamma' in k:
+                    # mod_weights[k.replace('LayerNorm.gamma', 'bert.embeddings.LayerNorm.weight')] = mod_weights.pop(k)
+                    d_[k.replace('LayerNorm.gamma', 'LayerNorm.weight')] = mod_weights[k]
+                elif 'LayerNorm.beta' in k:
+                    # mod_weights[k.replace('LayerNorm.beta', 'bert.embeddings.LayerNorm.bias')] = mod_weights.pop(k)
+                    d_[k.replace('LayerNorm.beta', 'LayerNorm.bias')] = mod_weights[k]
+                else:
+                    d_[k] = v
+
             load_strict = conf.get('model.strict_load_pretrained_weights')
-            load_info = model.load_state_dict(mod_weights, strict=load_strict)
+            load_info = model.load_state_dict(d_, strict=load_strict)
             logger.info(f"Finished loading pretrained model. Results: {load_info}")
         else:
             logger.info("No pretrained weights provided. All weights will be trained from scratch.")
@@ -135,13 +172,14 @@ def init_tokenizer(conf):
     :return: The loaded tokenizer
     :rtype: PreTrainedTokenizerFast
     """
-    if conf.get('tokenizer.type') == 'xlmr base':
-        return XLMRobertaTokenizerFast(**conf.get('tokenizer.tok_args'))
-    elif conf.get('tokenizer.type') == 'mt5':
-        return MT5TokenizerFast(**conf.get('tokenizer.tok_args'))
-    # Add more tokenizers here
-    else:
-        raise NotImplementedError('Tokenizer type not found!')
+    return AutoTokenizer.from_pretrained(conf.get('tokenizer.model_name_or_path'), use_auth_token=True)
+    # if conf.get('tokenizer.type') == 'xlmr base':
+    #     return XLMRobertaTokenizerFast(**conf.get('tokenizer.tok_args'))
+    # elif conf.get('tokenizer.type') == 'mt5':
+    #     return MT5TokenizerFast(**conf.get('tokenizer.tok_args'))
+    # # Add more tokenizers here
+    # else:
+    #     raise NotImplementedError('Tokenizer type not found!')
 
 def prepare_train_dev_datasets(conf, tokenizer, seed=42):
     """

@@ -35,6 +35,10 @@ from massive import (
 import transformers
 from ruamel.yaml import YAML
 
+import wandb
+
+wandb.init(project="indicxtreme")
+
 logger = logging.getLogger('massive_logger')
 
 def main():

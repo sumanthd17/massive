@@ -1,0 +1,63 @@
+
+run_name: &run_name auto_base_zero_20220926
+max_length: &max_length 512
+
+model:
+  type: auto model intent classification slot filling
+  size: base
+  model_name_or_path: ai4bharat/indic-bert
+  pretrained_weights: /home/sumanth/massive/pretrained_models/ibv1.bin
+  strict_load_pretrained_weights: false
+  model_config_args:
+    use_crf: false
+    slot_loss_coef: 2.0
+    hidden_layer_for_class: 11
+    head_num_layers: 1
+    head_layer_dim: 2048
+    head_intent_pooling: max
+    freeze_layers: model.embeddings.word_embeddings.weight
+
+tokenizer:
+  model_name_or_path: ai4bharat/indic-bert
+  tok_args:
+    max_len: *max_length
+
+collator:
+  type: massive intent class slot fill
+  args:
+    max_length: *max_length
+    padding: longest
+
+train_val:
+  train_dataset: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.train
+  train_locales: en-US
+  dev_dataset: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.dev
+  intent_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.intents
+  slot_labels: /home/sumanth/massive/IN-MASSIVE/hf/IN-MASSIVE.slots
+  slot_labels_ignore:
+    - Other
+  eval_metrics: all
+  trainer_args:
+    output_dir: /home/sumanth/massive/outputs/ibv1
+    logging_dir: /home/sumanth/massive/outputs/ibv1
+    save_strategy: steps
+    save_steps: 500
+    evaluation_strategy: steps
+    eval_steps: 500
+    save_total_limit: 5
+    learning_rate: 1e-5
+    lr_scheduler_type: constant_with_warmup
+    warmup_steps: 500
+    weight_decay: 0.1
+    gradient_accumulation_steps: 8
+    per_device_train_batch_size: 128
+    per_device_eval_batch_size: 128
+    num_train_epochs: 500
+    remove_unused_columns: false
+    label_names:
+      - intent_num
+      - slots_num
+    logging_steps: 100
+    log_level: info
+    locale_eval_strategy: all and each
+    disable_tqdm: false
